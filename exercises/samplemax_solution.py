@@ -19,21 +19,21 @@ Run it in separate shells with 3 parties, of which 1 corrupted:
 secint = mpc.SecInt()
 mpc.run(mpc.start())
 
-n = len(mpc.parties)                  # number of parties
+m = len(mpc.parties)                  # number of parties
 i = mpc.pid                           # my index
-m = 10                                # input array length
-B = 100*m                             # sum of inputs per party
-k = max(n, B)                         # bound for encoding argmax
+n = 10                                # input array length
+B = 100*n                             # sum of inputs per party
+k = max(m, B)                         # bound for encoding argmax
 
 
 #
 # fill inputs with random numbers that sum to B
 #
-inputs = [random.randrange(1, B) for j in range(0, m)]
+inputs = [random.randrange(1, B) for val_idx in range(0, n)]
 isum = sum(inputs)                    # normalize inputs
-for j in range(0, m):
-    inputs[j] *= B/isum
-    inputs[j] = int(inputs[j])
+for val_idx in range(0, n):
+    inputs[val_idx] *= B/isum
+    inputs[val_idx] = int(inputs[val_idx])
 inputs[0] = B - sum(inputs[1:])       # adjust sum for possible rounding errors
 print(f'Party {i} with inputs {inputs}, sum = {sum(inputs)}.')
 
@@ -43,9 +43,9 @@ print(f'Party {i} with inputs {inputs}, sum = {sum(inputs)}.')
 #
 slist = seclist([], secint)
 smaxlist = seclist([], secint)
-for j in range(0,m):
-    for ii in range(0,n):
-        slist.append(mpc.input(secint(inputs[j]), ii))
+for val_idx in range(0,n):
+    for party_idx in range(0,m):
+        slist.append(mpc.input(secint(inputs[val_idx]), party_idx))
     smaxlist.append(mpc.max(slist))
 
 maxmax = mpc.run(mpc.output(mpc.max(smaxlist)))
@@ -57,11 +57,11 @@ print(f'Maximal input element is {maxmax}.')
 #
 smax = secint(0)
 sargmax = secint(0)
-for j in range(0,m):
-    for ii in range(0,n):
-        v = mpc.input(secint(inputs[j]), ii)
+for val_idx in range(0,n):
+    for party_idx in range(0,m):
+        v = mpc.input(secint(inputs[val_idx]), party_idx)
         smaxtmp = mpc.if_else(v > smax, v, smax)
-        sargmax = mpc.if_else(v > smax, secint(ii), sargmax)
+        sargmax = mpc.if_else(v > smax, secint(party_idx), sargmax)
         smax = smaxtmp
 
 argmax = mpc.run(mpc.output(sargmax))
