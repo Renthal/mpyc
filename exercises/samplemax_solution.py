@@ -2,6 +2,7 @@ import random
 import sys
 from mpyc.seclists import seclist
 from mpyc.runtime import mpc
+import sys
 
 """
 Run it with one party:
@@ -37,21 +38,34 @@ for val_idx in range(0, n):
 inputs[0] = B - sum(inputs[1:])       # adjust sum for possible rounding errors
 print(f'Party {i} with inputs {inputs}, sum = {sum(inputs)}.')
 
-
 #
 # find maximal input element
 #
-slist = seclist([], secint)
+#slist = seclist([], secint)
+print("Version 1 ------------------------")
 smaxlist = seclist([], secint)
 for val_idx in range(0,n):
+    slist = seclist([], secint)
     for party_idx in range(0,m):
         slist.append(mpc.input(secint(inputs[val_idx]), party_idx))
     smaxlist.append(mpc.max(slist))
 
 maxmax = mpc.run(mpc.output(mpc.max(smaxlist)))
-print(f'Maximal input element is {maxmax}.')
+print(f'Version 1: Maximal input element is {maxmax}.')
+
+print("Version 2 ------------------------")
+smaxlist = seclist([], secint)
+max_value = max(inputs)
+print(f"My max input {i}: {max_value}")
+
+for party_idx in range(0,m):
+    smaxlist.append(mpc.input(secint(max_value), party_idx))
+
+maxmax = mpc.run(mpc.output(mpc.max(smaxlist)))
+print(f'Version 2: Maximal input element is {maxmax}.')
 
 
+print("Version 3 ------------------------")
 #
 # find maximal input element and corresponding party
 #
