@@ -83,5 +83,22 @@ maxmax = mpc.run(mpc.output(smax))
 print(f'Maximal input element is {maxmax}, from party {argmax}.')
 
 
+
+print("Version 4 ------------------------")
+#
+# find maximal input element and corresponding party
+#
+smax = secint(0)
+sargmax = secint(0)
+for val_idx in range(0,n):
+    for party_idx in range(0,m):
+        v = mpc.input(secint(inputs[val_idx]), party_idx)
+        sargmax = mpc.if_else(v > smax, secint(party_idx), sargmax)
+        smax = mpc.if_else(v > smax, v, smax)
+
+argmax = mpc.run(mpc.output(sargmax))
+maxmax = mpc.run(mpc.output(smax))
+print(f'Maximal input element is {maxmax}, from party {argmax}.')
+
 mpc.run(mpc.shutdown())
 
