@@ -69,7 +69,8 @@ for i in range(n):
     print(f'Item {i} to P_{j}.')
     if j == my_pid:
         my_worth += val[i]
-print(f'P_{my_pid} gets items worth {my_worth} and this is {"" if (my_worth > B / m) else "not "}a proportional fair share.')
+print(f'P_{my_pid} gets items worth {my_worth} and this is {"" if (my_worth > B / m) else "not "}'
+      f'a proportional fair share.')
 
 
 #
@@ -87,11 +88,12 @@ argmax, maxsum = mpc.run(mpc.output(list(am)))
 print(f'Maximal allocation is worth {maxsum}, with allocation no. {argmax}:')
 worth = 0
 for i in range(0, n):
-    ii = (argmax // m ** i) % m
-    print(f'Item {i} to P_{ii}.')
-    if (ii == my_pid):
+    j = (argmax // m ** i) % m
+    print(f'Item {i} to P_{j}.')
+    if (j == my_pid):
         worth += val[i]
-print(f'P_{my_pid} gets items worth {worth} and this is {"" if (worth > B / m) else "not "}a proportional fair share.')
+print(f'P_{my_pid} gets items worth {worth} and this is {"" if (worth > B / m) else "not "}a proportional '
+      f'fair share.')
 
 mpc.run(mpc.shutdown())
 
