@@ -1,6 +1,6 @@
 import random
-import sys
-from mpyc.seclists import seclist
+from typing import List
+
 from mpyc.runtime import mpc
 
 """
@@ -17,64 +17,61 @@ Run it in separate shells with 3 parties, of which 1 corrupted:
 
 """
 
+def create_random_vector(n: int, b: int) -> List[int]:
+    """create n random numbers that sum to b"""
+    values = [random.randrange(1, b) for _ in range(n)]
+    s = sum(values)  # normalize val
+    values = [int(v * b / s) for v in values]
+    values[0] = b - sum(values[1:])  # adjust sum for possible rounding errors
+    return values
 
-secint = mpc.SecInt(16)               # working with 16-bit integers
+
+m = len(mpc.parties)                 # number of parties
+n = 5                                # number of items
+B = 100                              # sum of valuations per party
+K = m ** n                           # number of allocations
+val = create_random_vector(n=n, b=B)
+
 mpc.run(mpc.start())
+my_pid = mpc.pid                     # my index
+secint = mpc.SecInt(16)              # working with 16-bit integers
 
-n = len(mpc.parties)                  # number of parties
-i = mpc.pid                           # my index
-m = 8                                 # number of items
-B = 100*m                             # sum of valuations per party
-K = n**m                              # number of allocations
-
-
-#
-# fill input valuations with random numbers that sum to B
-#
-val = [random.randrange(1, B) for j in range(0, m)]
-# for testing: val = [ 1 if (j%n) == i else 0 for j in range(0, m)]
-isum = sum(val)                       # normalize val
-for j in range(0, m):
-    val[j] *= B/isum
-    val[j] = int(val[j])
-val[0] = B - sum(val[1:])             # adjust sum for possible rounding errors
-print(f'Party {i} with valuations {val}, sum = {sum(val)}.')
 print(f'Number of allocations = {K+1}.')
+print(f'Party {my_pid} with valuations {val}, sum = {sum(val)}.')
+
 
 #
 # First version
 #
 print(f'\nComputing allocation, first version')
 
-# each party shares its private valuation with the other parties
-V = mpc.input([secint(a) for a in val])
-
 # find allocation that maximizes sum of valuations -- first version
-smax = secint(0)
-sargmax = secint(0)
-for a in range(K):
+max_worth = secint(0)
+best_allocation = secint(0)
+for allocation in range(K):
     s = secint(0)
-    for j in range(0,m):
-        # item j is allocated to P_ii such that
-        # ii is the j-th digit of allocation a in base-m notation
-        ii = (a // n**j) % n
-        s += mpc.input(secint(val[j]), ii)
-    # total valuation of allocation is s
-    smaxtmp = mpc.if_else(s > smax, s, smax)
-    sargmax = mpc.if_else(s > smax, secint(a), sargmax)
-    smax = smaxtmp
+    for i in range(n):
+        # item i is allocated to P_j such that j is the i-th digit of `allocation` in base-m notation
+        j = (allocation // m ** i) % m
+        # print(f'{allocation} // {m**i} % {m} = {j} ')
+        s += mpc.input(secint(val[i]), senders=j)  # total valuation of allocation
 
-argmax = mpc.run(mpc.output(sargmax))
-maxsum = mpc.run(mpc.output(smax))
-print(f'Maximal allocation is worth {maxsum}, with allocation no. {argmax}:')
-worth = 0
-for j in range(0,m):
-    ii = (argmax // n**j) % n
-    print(f'Item {j} to P_{ii}.')
-    if (ii == i):
-        worth += val[j]
+    best_allocation = mpc.if_else(s > max_worth, secint(allocation), best_allocation)
+    max_worth = mpc.if_else(s > max_worth, s, max_worth)
 
-print(f'P_{i} gets items worth {worth} and this is {"" if (worth > B/n) else "not "}a proportional fair share.')
+best_allocation_public = mpc.run(mpc.output(best_allocation))
+max_worth_public = mpc.run(mpc.output(max_worth))
+
+print(f'Maximal allocation is worth {max_worth_public}, with allocation no. {best_allocation_public}:')
+my_worth = 0
+for i in range(n):
+    j = (best_allocation_public // m ** i) % m
+    print(f'Item {i} to P_{j}.')
+    if j == my_pid:
+        my_worth += val[i]
+print(f'P_{my_pid} gets items worth {my_worth} and this is {"" if (my_worth > B / m) else "not "}'
+      f'a proportional fair share.')
+
 
 #
 # Second version
@@ -85,18 +82,18 @@ print(f'\nComputing allocation, second version')
 V = mpc.input([secint(a) for a in val])
 
 # find the maximum over all allocations, using binary search from argmax()
-am = mpc.argmax(mpc.sum(V[(a // n**j) % n][j] for j in range(m)) for a in range(K))
+am = mpc.argmax(mpc.sum(V[(a // m ** i) % m][i] for i in range(n)) for a in range(K))
 
 argmax, maxsum = mpc.run(mpc.output(list(am)))
 print(f'Maximal allocation is worth {maxsum}, with allocation no. {argmax}:')
 worth = 0
-for j in range(0,m):
-    ii = (argmax // n**j) % n
-    print(f'Item {j} to P_{ii}.')
-    if (ii == i):
-        worth += val[j]
-
-print(f'P_{i} gets items worth {worth} and this is {"" if (worth > B/n) else "not "}a proportional fair share.')
+for i in range(0, n):
+    j = (argmax // m ** i) % m
+    print(f'Item {i} to P_{j}.')
+    if (j == my_pid):
+        worth += val[i]
+print(f'P_{my_pid} gets items worth {worth} and this is {"" if (worth > B / m) else "not "}a proportional '
+      f'fair share.')
 
 mpc.run(mpc.shutdown())
 
