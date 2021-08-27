@@ -81,6 +81,17 @@ print(f'\nComputing allocation, second version')
 # each party shares its private valuation with the other parties in one step
 V = mpc.input([secint(a) for a in val])
 
+# anti cheater check
+for i in range(m):
+    sum = mpc.run(mpc.output(mpc.sum(V[i])))
+    min = mpc.run(mpc.output(mpc.min(V[i])))
+    max = mpc.run(mpc.output(mpc.max(V[i])))
+    assert sum == B, f'Party {i} is cheating!'
+    assert min >= 0, f'Party {i} is cheating!'
+    assert max <= B, f'Party {i} is cheating!'
+
+print('Input values of each party are sane')
+
 # find the maximum over all allocations, using binary search from argmax()
 am = mpc.argmax(mpc.sum(V[(a // m ** i) % m][i] for i in range(n)) for a in range(K))
 

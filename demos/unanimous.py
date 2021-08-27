@@ -65,7 +65,7 @@ secbit = mpc.SecInt(1)  # 1-bit integers suffice
 
 mpc.run(mpc.start())
 votes_shares = mpc.input(secbit(vote), senders=voters)
-partial_sum = mpc.add(*votes_shares)
+partial_sum = mpc.all(votes_shares)
 out = mpc.output(partial_sum, receivers=voters)
 result = mpc.run(out)
 #result = mpc.run(mpc.output(mpc.all(votes), receivers=voters))
